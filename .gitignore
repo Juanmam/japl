@@ -1,3 +1,6 @@
+# Ignore makefile
+README_DEV.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
