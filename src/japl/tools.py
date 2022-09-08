@@ -2,7 +2,7 @@ from .decoradores import Singleton
 from typing import Any
 
 @Singleton
-class DataObserver:
+class Observer:
     """
     An observer class. This type of class let's you to add attributes,
     fetch their values and remove them dynamiclly. Quite useful to access

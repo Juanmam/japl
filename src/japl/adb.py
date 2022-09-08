@@ -145,7 +145,35 @@ class DeltaManager:
             
         # We update the tables DataFrame.
         self.update()
+
+    def rollback(self,
+                 table_name: str, 
+                 no_of_versions: int = 1,
+                 aim_version: int = None,
+                 date: str = None, 
+                 timestamp: str = '00:00:00') -> None:
+        """
+        Rolls back the table. It can take a date or a version as a parameter.
+
+        Args:
+            table_name (str): The table to rollback.
+            no_of_versions (int, optional): The number of versions to go back in time. Defaults to 1.
+            aim_version (int, optional): The version you want to select. Defaults to None.
+            date (str, optional): The date you want to rollback to. Defaults to None.
+                Format: YYYY-MM-DD
+            timestamp (_type_, optional): The time you want to rollback to. Defaults to '00:00:00'.
+                Format: HH:MM:SS
+        """
+        if date:
+            spark.sql(f"RESTORE TABLE {table_name} TO TIMESTAMP AS OF '{date} {timestamp}'")
+        else:
+            if not aim_version:
+                current_version = spark.sql(f"DESCRIBE HISTORY {table_name}").toPandas()["version"].max()
+                aim_version = current_version - no_of_versions
             
+            if aim_version > 0 and aim_version < current_version:
+                spark.sql(f"RESTORE TABLE {table_name} TO VERSION AS OF {str(aim_version)}")
+
     def delete(self, 
                table_name: str):
         """
