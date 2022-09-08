@@ -1,7 +1,7 @@
 from typing import Callable
 
 def Singleton(
-    class_: Callable[...]) -> object:
+    class_) -> object:
     """
     A decorator used to turn a class into a Singleton. This makes it
     so that if a class has already been instanciated one, that instance

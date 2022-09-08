@@ -1,8 +1,9 @@
 from pandas import DataFrame, concat
-from typing import List
+from typing import List, Callable
 from tqdm import tqdm
 from pyspark.context import SparkContext
 from pyspark.sql.session import SparkSession
+from exceptions import ParameterTypingException
 sc = SparkContext.getOrCreate()
 spark = SparkSession(sc)
 try:
@@ -92,6 +93,8 @@ class DeltaManager:
             raw_path:     str,
             destionation_path: str,
             write_mode:   str  = 'overwrite',
+            query:        str  = None,
+            transformer        = None,
             file_name:    str  = None,
             nested:       bool = False
             ):
@@ -100,13 +103,24 @@ class DeltaManager:
 
         Args:
             table_name (str): The name of the table.
+            
             raw_path (str): The path to the file you want to ingest.
+            
             destionation_path (str): The path to the location you want to create the parquet at. 
+            
             write_mode (str, optional): Behaviour if the table already exists. Options are 'overwrite' and 'append'. 
                 Defaults to 'overwrite'.
+            
+            query (str, optional): A SQL query to transform the original table. This is applied before the transormer.
+            
+            transformer (Callable[DataFrame], optional): A function, that takes a Spark DataFrame as a parameter. 
+            Return should be a Spark DataFrame. This is executed after the query, so any transformation done by the
+            query will affect the input parameter of the transformer.
+
             file_name (str, optional): The name of the file to inglest. If not specified or None, it will be set
             to the table name as default. 
                 Defaults to None.
+
             nested (bool, optional): A flag that let's the function know if the input is a folder with partitioned data
             or a raw file. True for nested folder, false for raw file. 
                 Defaults to False.
@@ -124,7 +138,21 @@ class DeltaManager:
             df = spark.read.parquet(f"dbfs:{raw_path}{file_name}/{file_name}.parquet")
         else:
             df = spark.read.parquet(f"dbfs:{raw_path}{file_name}.parquet")
-        
+
+        # Filters the data using a SQL query if apply.
+        if query:
+
+            df.createOrReplaceTempView(table_name)
+            df = spark.sql(query)
+            spark.catalog.dropTempView(table_name)
+
+        # The transform function would apply here.
+        if transformer:
+            if callable(transformer):
+                df = transformer(df)
+            else:
+                ParameterTypingException()
+
         # We check if there is data in the dataframe.
         if df.count() > 0:
             # Check if the table already exist, then we overwrite it.
